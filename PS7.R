@@ -1,30 +1,39 @@
-sg.int<-function(g,...,lower,upper)
+#PS7 Mauricio
 
-{ require("SparseGrid")
+#set wd
+setwd("C:/Users/MauricioAndresVela/Documents/R/Clase/PS7")
 
- lower<-floor(lower)
 
- upper<-ceiling(upper)
+sg.int<-function(g,...,lower,upper, dimensions, parallel=1){ 
+  
+  #Require packages
+  require("SparseGrid"); require("doSNOW")
 
- if (any(lower>upper)) stop("lower must be smaller than upper")
+  #Put number of cores
+  registerDoSNOW(makeCluster(parallel, type = "SOCK"))
 
- gridss<-as.matrix(expand.grid(seq(lower[1],upper[1]-1,by=1),seq(lower[2],upper[2]-1,by=1)))
+  
+  #Upper and lower
+  lower<-floor(lower)
+  upper<-ceiling(upper)
+  if (any(lower>upper)) stop("lower must be smaller than upper")
 
- sp.grid <- createIntegrationGrid( 'KPU', dimension=2, k=5 )
+  #Need to put dimensions according to lenght of lower and upper
+  if(any(dim != c(length(lower), length(upper))))  stop("Dimensions is incorrect")
 
- nodes<-gridss[1,]+sp.grid$nodes
+  # Sequence for lower and upper fo each dimension , and expand.grid gives creates all permutations
+  gridss<-as.matrix(expand.grid(lapply(1:dim, function(x){seq(lower[x], upper[x]-1, by=1)})))
 
- weights<-sp.grid$weights
-
- for (i in 2:nrow(gridss))
-
- {
+  #Create integration grid
+  sp.grid <- createIntegrationGrid( 'KPU', dimension=dimensions, k=5 )
+  nodes<-gridss[1,]+sp.grid$nodes
+  weights<-sp.grid$weights
+  for (i in 2:nrow(gridss)) {
     nodes<-rbind(nodes,gridss[i,]+sp.grid$nodes)  
-
     weights<-c(weights,sp.grid$weights)
-
   }
-
+  
+  #evaluate function g
   gx.sp <- apply(nodes, 1, g,...)
   val.sp <- gx.sp %*%weights
   val.sp
