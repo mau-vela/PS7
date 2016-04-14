@@ -5,7 +5,7 @@ setwd("C:/Users/MauricioAndresVela/Documents/R/Clase/PS7")
 
 
 sg.int<-function(g,lower,upper, dimensions, parallel=1, ...){ 
-  
+
   #Require packages
   require("SparseGrid"); require(plyr); require(foreach); require(parallel)
   #require("doSNOW")
@@ -131,9 +131,48 @@ test_that("Equal with adaptIntegrate", {
 
 #Test speed
 microbenchmark(
-  "1 core" = sg.int(g, dim=3, lower=lower, upper=upper, parallel=1),
-  "3 core" = sg.int(g, dim=3, lower=lower, upper=upper, parallel=3),
+  "sg.int" = sg.int(g, dim=2, lower=lower, upper=upper, parallel=1),
+  "adaptIntegrate" = adaptIntegrate(g, lower, upper),
   times=1
 )
+#much faster with adaptIntegrate
+
+#########################################################
+#Montecarlo
+
+MCint <- function(g,lower,upper, dimensions, parallel=1, n=10000){
+  
+  #Require packages
+  require("parallel")
+  
+  #Put number of cores  
+  cluster <- makeCluster(parallel)
+  
+  #Upper and lower
+  lower<-floor(lower)
+  upper<-ceiling(upper)
+  if (any(lower>upper)) stop("lower must be smaller than upper")
+  
+  #Need to put dimensions according to lenght of lower and upper
+  #if (dimensions > length(lower) | dimensions > length(upper))  stop("Dimensions is incorrect")  
+  
+  u <- runif(n*dimensions, lower, upper)
+  s <- matrix(u, ncol=dimensions)
+  x.values <- parApply(cluster, s, 1, g)
+  int <- mean(x.values)*(upper - lower)^dimensions
+  
+  #Stop cluster
+  stopCluster(cluster)
+  
+  return(int)
+}
+
+
+#Example
+g <- function(x) x[1]^2+x[2]^2
+lower <- 0
+upper <- 10
+dimensions=2
+MCint(g,lower,upper, dimensions,parallel=2)
 
 
